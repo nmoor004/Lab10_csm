@@ -71,30 +71,32 @@ unsigned char threeLEDs = 0x00;
 ////////////ThreeLEDsSM//////////////
 ///////////////////////////////////////
 
-enum 3_States {3_init, 3_Shift} 3_state;
+enum T_States {t_init, t_Shift} t_state;
 
 unsigned char shifter;
 
-void 3_Tick() {
-	switch(3_state) {
-		case 3_init:
-			shifter = 0x01;
-			3_state = 3_Shift;
+void t_tick() {
+	switch(t_state) {
+		case t_init:
+			shifter = 0x04;
+			//PORTB = shifter;
+			t_state = t_Shift;
 			break;
-		case 3_Shift: 
+		case t_Shift: 
 			if (shifter < 0x04) {
 			shifter = shifter << 1;
 			}
 			else {
 				shifter = 0x01;
 			}
+			//PORTB = shifter;
 			break;
 	}
 	
-	switch(3_state) {
-		case 3_init:
+	switch(t_state) {
+		case t_init:
 			break;
-		case 3_Shift: 
+		case t_Shift: 
 			break;
 	}
 	
@@ -114,12 +116,15 @@ void b_tick() {
 	switch(b_state) {
 		case b_init:
 			B3 = 0x00;
+			b_state = b_On;
 			break;
 		case b_On:
+			PORTC = 0x01;
 			B3 = B3 | 0x08;
 			b_state = b_Off;
 			break;
 		case b_Off:
+			PORTC = 0x02;
 			B3 = B3 & 0x07;
 			b_state = b_On;
 			break;
@@ -137,6 +142,7 @@ void b_tick() {
 	
 }
 
+
 ////////////////////////////////////////////////
 //////////////CombineLEDsSM//////////////////////
 //////////////////////////////////////////////
@@ -144,9 +150,10 @@ void b_tick() {
 enum C_States {c_init, c_combine} c_state;
 
 
-void b_tick() {
+void c_tick() {
 	switch(c_state) {
-		case b_init:
+		case c_init:
+			c_state = c_combine;
 			break;
 		case c_combine:
 			threeLEDs = shifter | B3 ;
@@ -155,12 +162,10 @@ void b_tick() {
 
 	}
 	
-	switch(b_state) {
-		case b_init:
+	switch(c_state) {
+		case c_init:
 			break;
-		case b_On:
-			break;
-		case b_Off:
+		case c_combine:
 			break;
 	}
 	
@@ -168,18 +173,21 @@ void b_tick() {
 }
 
 
-void main() {
-	DDRB = 0xFF; PORTA = 0x00;
+int main(void) {
+	DDRB = 0xFF; PORTB = 0x00;  // LED output
+	DDRC = 0xFF; PORTC = 0x00; // DEBUG output
 	
 	b_state = b_init;
-	3_state = 3_init;
+	t_state = t_init;
+	c_state = c_init;
 	threeLEDs = 0x00;
 	TimerSet(1000);
 	TimerOn();
 	
 	while(1) {
-		3_Tick();
+		t_tick();
 		b_tick();
+		c_tick();
 		while (!TimerFlag);
 		TimerFlag = 0;
 		
