@@ -71,37 +71,41 @@ unsigned char threeLEDs = 0x00;
 ////////////ThreeLEDsSM//////////////
 ///////////////////////////////////////
 
-enum 3_States {3_init, 3_Shift} 3_state;
+enum T_States {t_init, t_Shift} t_state;
 
 unsigned char shifter;
-unsigned char 3_count;
+unsigned char t_count;
 
-void 3_Tick() {
-	switch(3_state) {
-		case 3_init:
-			3_count = 0;
-			shifter = 0x01;
-			3_state = 3_Shift;
+void t_tick() {
+	switch(t_state) {
+		case t_init:
+			shifter = 0x04;
+			//PORTB = shifter;
+			t_state = t_Shift;
+			t_count = 0x00;
 			break;
-		case 3_Shift: 
-		if (3_count != 10) {
-			3_count++;
-		}
-		else {
-			if (shifter < 0x04) {
-			shifter = shifter << 1;
+		case t_Shift: 
+			if (t_count != 3) {
+				t_count++;
 			}
 			else {
-				shifter = 0x01;
+				if (shifter < 0x04) {
+					shifter = shifter << 1;
+				}
+				else {
+					shifter = 0x01;
+				}
+				t_count = 0;
 			}
-		}
+
+			//PORTB = shifter;
 			break;
 	}
 	
-	switch(3_state) {
-		case 3_init:
+	switch(t_state) {
+		case t_init:
 			break;
-		case 3_Shift: 
+		case t_Shift: 
 			break;
 	}
 	
@@ -114,38 +118,40 @@ void 3_Tick() {
 //////////////BlinkingLEDSM//////////////////////
 //////////////////////////////////////////////
 
-enum B_States {b_init, b_Idle, b_On, b_Off} b_state;
-unsigned short b_count = 0x00;
-unsigned char b_type = 0x00;
+enum B_States {b_init, b_On, b_Off} b_state;
+
 unsigned char B3;
+unsigned short b_count = 0x00;
+
 void b_tick() {
 	switch(b_state) {
 		case b_init:
 			B3 = 0x00;
-			b_type = 0x00;
-			b_state = b_Idle;
+			b_state = b_On;
 			break;
-		case b_Idle:
-			if (b_count != 3) {
-					b_count++;
+		case b_On:
+
+			PORTC = 0x01;
+			B3 = B3 | 0x08;
+			if (b_count != 10) {
+				b_count++;
 			}
 			else {
 				b_count = 0;
-				if (b_type == 0) {
-					b_state = b_On;
-					b_type = 1;
-				}
-				else if (b_type == 1) {
-					b_state = b_Off;
-					b_type = 0;
-			break;
-		case b_On:
-			B3 = B3 | 0x08;
-			b_state = b_Idle;
+				b_state = b_Off;
+			}
+
 			break;
 		case b_Off:
+			PORTC = 0x02;
 			B3 = B3 & 0x07;
-			b_state = b_Idle;
+			if (b_count != 10) {
+				b_count++;
+			}
+			else {
+				b_count = 0;
+				b_state = b_On;
+			}
 			break;
 	}
 	
@@ -160,6 +166,7 @@ void b_tick() {
 	
 	
 }
+
 
 ////////////////////////////////////////////////
 //////////////CombineLEDsSM//////////////////////
@@ -171,11 +178,10 @@ enum C_States {c_init, c_combine} c_state;
 void c_tick() {
 	switch(c_state) {
 		case c_init:
-			threeLEDs = 0x00;
 			c_state = c_combine;
 			break;
 		case c_combine:
-			threeLEDs = shifter | B3; 
+			threeLEDs = shifter | B3 ;
 			PORTB = threeLEDs;
 			break;
 
@@ -184,9 +190,7 @@ void c_tick() {
 	switch(c_state) {
 		case c_init:
 			break;
-		case c_On:
-			break;
-		case c_Off:
+		case c_combine:
 			break;
 	}
 	
@@ -194,18 +198,19 @@ void c_tick() {
 }
 
 
-void main() {
-	DDRB = 0xFF; PORTA = 0x00;
+int main(void) {
+	DDRB = 0xFF; PORTB = 0x00;  // LED output
+	DDRC = 0xFF; PORTC = 0x00; // DEBUG output
 	
 	b_state = b_init;
-	3_state = 3_init;
-	c_state = c_combine;
+	t_state = t_init;
+	c_state = c_init;
 	threeLEDs = 0x00;
 	TimerSet(100);
 	TimerOn();
 	
 	while(1) {
-		3_Tick();
+		t_tick();
 		b_tick();
 		c_tick();
 		while (!TimerFlag);
